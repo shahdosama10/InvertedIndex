@@ -50,7 +50,13 @@ public class Index5 {
         while (p != null) {
             /// -4- **** complete here ****
             // fix get rid of the last comma
-            System.out.print("" + p.docId + "," );
+            if(p.next != null){
+                System.out.print("" + p.docId + "," );
+
+            }
+            else{
+                System.out.print("" + p.docId );
+            }
             p = p.next;
         }
         System.out.println("]");
@@ -82,6 +88,27 @@ public class Index5 {
                 while ((ln = file.readLine()) != null) {
                     /// -2- **** complete here ****
                     ///**** hint   flen +=  ________________(ln, fid);
+
+
+                    // tolowercase
+
+
+                    // stop word then continue
+
+                    // stem word
+                    // if word is not existing then put it in index
+
+
+                    // if word is existing then
+
+                    // if fid in posting list of item then dtf ++ , term frequency ++
+
+
+                    // if fid not in posting list then addPosting(fid) , term frequency ++, doc frequency ++
+
+
+
+
                 }
                 sources.get(fid).length = flen;
 
@@ -189,6 +216,11 @@ public class Index5 {
         int len = words.length;
         
         //fix this if word is not in the hash table will crash...
+
+
+        // if query not in the index return not found
+
+
         Posting posting = index.get(words[0].toLowerCase()).pList;
         int i = 1;
         while (i < len) {

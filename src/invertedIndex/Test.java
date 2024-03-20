@@ -46,6 +46,8 @@ public class Test {
             BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
             phrase = in.readLine();
 /// -3- **** complete here ****
+
+
         } while (!phrase.isEmpty());
 
     }
