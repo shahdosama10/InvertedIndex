@@ -77,47 +77,29 @@ public class Index5 {
  
     //-----------------------------------------------
     public void buildIndex(String[] files) {  // from disk not from the internet
-        int fid = 0;
-        for (String fileName : files) {
-            try (BufferedReader file = new BufferedReader(new FileReader(fileName))) {
-                if (!sources.containsKey(fileName)) {
+        int fid = 0; // Initialize document ID counter
+        for (String fileName : files) { // Iterate through each file in the array of file names
+            try (BufferedReader file = new BufferedReader(new FileReader(fileName))) { // Open file for reading
+                if (!sources.containsKey(fileName)) { // Check if the file is not already in the sources map
+                    // If not, create a new SourceRecord and add it to the sources map
                     sources.put(fid, new SourceRecord(fid, fileName, fileName, "notext"));
                 }
-                String ln;
-                int flen = 0;
+                String ln; // Variable to store each line read from the file
+                int flen = 0; // Initialize the length of the file
+                // Read each line from the file until end of file is reached
                 while ((ln = file.readLine()) != null) {
-                    /// -2- **** complete here ****
-                    ///**** hint   flen +=  ________________(ln, fid);
-
-
-                    // tolowercase
-
-
-                    // stop word then continue
-
-                    // stem word
-                    // if word is not existing then put it in index
-
-
-                    // if word is existing then
-
-                    // if fid in posting list of item then dtf ++ , term frequency ++
-
-
-                    // if fid not in posting list then addPosting(fid) , term frequency ++, doc frequency ++
-
-
-
-
+                    // Call indexOneLine method to process each line and update index
+                    flen += indexOneLine(ln, fid);
                 }
+                // Update the length of the file in the corresponding SourceRecord
                 sources.get(fid).length = flen;
-
-            } catch (IOException e) {
+    
+            } catch (IOException e) { // Catch IOException if file not found or other I/O error occurs
                 System.out.println("File " + fileName + " not found. Skip it");
             }
-            fid++;
+            fid++; // Increment document ID counter for the next file
         }
-        //   printDictionary();
+        //   printDictionary(); // to print the dictionary after building the index
     }
 
     //----------------------------------------------------------------------------  
