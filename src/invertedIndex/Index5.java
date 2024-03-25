@@ -207,7 +207,12 @@ public class Index5 {
         int len = words.length;
         
         //fix this if word is not in the hash table will crash...
-
+        for(String word: words){
+            if(!index.containsKey(word.toLowerCase())){
+                return "Not found";
+            }
+            break;
+        }
 
         // if query not in the index return not found
 
@@ -215,7 +220,13 @@ public class Index5 {
         Posting posting = index.get(words[0].toLowerCase()).pList;
         int i = 1;
         while (i < len) {
+            if (!index.containsKey(words[i].toLowerCase())) {
+                continue;
+            }
+
             posting = intersect(posting, index.get(words[i].toLowerCase()).pList);
+            if(posting == null)
+                return "No matching";
             i++;
         }
         while (posting != null) {
