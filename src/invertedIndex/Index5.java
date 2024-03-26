@@ -205,28 +205,41 @@ public class Index5 {
         String result = "";
         String[] words = phrase.split("\\W+");
         int len = words.length;
+        boolean found = false;
         
         //fix this if word is not in the hash table will crash...
         for(String word: words){
-            if(!index.containsKey(word.toLowerCase())){
-                return "Not found";
+            if(index.containsKey(word.toLowerCase())){
+                found = true;
             }
-            break;
         }
+        //check if the whole phrase is not in the index return not found
+        if(!found){
+            return "Not found";
+        }
+
 
         // if query not in the index return not found
 
 
-        Posting posting = index.get(words[0].toLowerCase()).pList;
-        int i = 1;
+//        Posting posting = index.get(words[0].toLowerCase()).pList;
+        Posting posting = null;
+        int i = 0;
         while (i < len) {
+            //skip the word if it is not found
             if (!index.containsKey(words[i].toLowerCase())) {
+                i++;
                 continue;
             }
 
-            posting = intersect(posting, index.get(words[i].toLowerCase()).pList);
             if(posting == null)
-                return "No matching";
+                posting = index.get(words[i].toLowerCase()).pList;
+            else
+            {
+                posting = intersect(posting, index.get(words[i].toLowerCase()).pList);
+                if(posting == null)
+                    return "No matching";
+            }
             i++;
         }
         while (posting != null) {
