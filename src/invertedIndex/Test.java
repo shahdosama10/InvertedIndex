@@ -47,8 +47,9 @@ public class Test {
             phrase = in.readLine();
             if (phrase.isEmpty()) {
                 break;
+            } else {
+                System.out.println("Boo0lean Model result = \n" + index.find_24_01(phrase));
             }
-            System.out.println("Boo0lean Model result = \n" + index.find_24_01(phrase));
 
         } while (!phrase.isEmpty());
 

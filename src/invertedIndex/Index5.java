@@ -25,35 +25,54 @@ import java.io.PrintWriter;
 public class Index5 {
 
     //--------------------------------------------
-    int N = 0;
+    int N = 0; // number of documents
     public Map<Integer, SourceRecord> sources;  // store the doc_id and the file name.
 
     public HashMap<String, DictEntry> index; // THe inverted index
 
-    public String path = "tmp11\\";
+    public String path = "tmp11\\"; // path of the documents
     //--------------------------------------------
 
+    /**
+     * constructor for index5
+     * initializes the index and sources
+     *
+     */
     public Index5() {
         sources = new HashMap<Integer, SourceRecord>();
         index = new HashMap<String, DictEntry>();
     }
 
+
+    /**
+     * setter for number of documents
+     * @param n number of documents
+     */
     public void setN(int n) {
         N = n;
     }
 
 
     //---------------------------------------------
+
+    /**
+     * function to print posting list
+     * @param p the haed of the posting list
+     */
     public void printPostingList(Posting p) {
         // Iterator<Integer> it2 = hset.iterator();
         System.out.print("[");
         while (p != null) {
             /// -4- **** complete here ****
             // fix get rid of the last comma
+            // if the next element is not null
+            // print the comma
             if(p.next != null){
                 System.out.print("" + p.docId + "," );
 
             }
+            // if the next element is null
+            // print the docId without the comma
             else{
                 System.out.print("" + p.docId );
             }
@@ -63,19 +82,28 @@ public class Index5 {
     }
 
     //---------------------------------------------
+
+    /**
+     * function to print the index
+     */
     public void printDictionary() {
         Iterator it = index.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry) it.next();
-            DictEntry dd = (DictEntry) pair.getValue();
-            System.out.print("** [" + pair.getKey() + "," + dd.doc_freq + "]       =--> ");
-            printPostingList(dd.pList);
+            DictEntry dd = (DictEntry) pair.getValue(); // get the DictEntry from the index
+            System.out.print("** [" + pair.getKey() + "," + dd.doc_freq + "]       =--> "); // print the string and the number of documents
+            printPostingList(dd.pList); // print posting list
         }
         System.out.println("------------------------------------------------------");
-        System.out.println("*** Number of terms = " + index.size());
+        System.out.println("*** Number of terms = " + index.size()); // print the number of words in the index
     }
  
     //-----------------------------------------------
+
+    /**
+     * function to build the inverted index
+     * @param files from the disk
+     */
     public void buildIndex(String[] files) {  // from disk not from the internet
         int fid = 0; // Initialize document ID counter
         for (String fileName : files) { // Iterate through each file in the array of file names
@@ -102,15 +130,23 @@ public class Index5 {
         //   printDictionary(); // to print the dictionary after building the index
     }
 
-    //----------------------------------------------------------------------------  
+    //----------------------------------------------------------------------------
+
+    /**
+     * helper method to build the inverted index
+     * @param ln line from the doc
+     * @param fid doc id
+     * @return the number of words in the line
+     */
     public int indexOneLine(String ln, int fid) {
-        int flen = 0;
+        int flen = 0; // number of words in the line
 
         String[] words = ln.split("\\W+");
       //   String[] words = ln.replaceAll("(?:[^a-zA-Z0-9 -]|(?<=\\w)-(?!\\S))", " ").toLowerCase().split("\\s+");
         flen += words.length;
         for (String word : words) {
-            word = word.toLowerCase();
+            word = word.toLowerCase(); // convert the word to lowercase
+            // skip the words that constantly repeated
             if (stopWord(word)) {
                 continue;
             }
@@ -133,7 +169,7 @@ public class Index5 {
             } else {
                 index.get(word).last.dtf += 1;
             }
-            //set the term_fteq in the collection
+            //set the term_freq in the collection
             index.get(word).term_freq += 1;
             if (word.equalsIgnoreCase("lattice")) {
 
@@ -144,12 +180,20 @@ public class Index5 {
         return flen;
     }
 
-//----------------------------------------------------------------------------  
+//----------------------------------------------------------------------------
+
+    /**
+     * function to skip the words that constantly repeated
+     * @param word the word to test it
+     * @return true if the word is repeated and false otherwise
+     */
     boolean stopWord(String word) {
+        // if the word is one of the following skip it
         if (word.equals("the") || word.equals("to") || word.equals("be") || word.equals("for") || word.equals("from") || word.equals("in")
                 || word.equals("a") || word.equals("into") || word.equals("by") || word.equals("or") || word.equals("and") || word.equals("that")) {
             return true;
         }
+        // if the length of the word is less than 2 skip it
         if (word.length() < 2) {
             return true;
         }
@@ -166,7 +210,14 @@ public class Index5 {
 //        return s.toString();
     }
 
-    //----------------------------------------------------------------------------  
+    //----------------------------------------------------------------------------
+
+    /**
+     * function to get the intersection of two posting lists
+     * @param pL1 the head of the first posting list
+     * @param pL2 the head of the second posting list
+     * @return the intersection of the two posting lists as Posting
+     */
     Posting intersect(Posting pL1, Posting pL2) {
 ///****  -1-   complete after each comment ****
 //   INTERSECT ( p1 , p2 )
@@ -201,6 +252,13 @@ public class Index5 {
         return answer;
     }
 
+    /**
+     * function that take the phrase and return the documents that contain the words in the phrase
+     * @param phrase the phrase to search for documents
+     * @return the documents that contain the words in the phrase or not found if all the words are not found in the index
+     *         or not matching if there is no intersection between the words in the phrase
+     *
+     */
     public String find_24_01(String phrase) { // any mumber of terms non-optimized search 
         String result = "";
         String[] words = phrase.split("\\W+");
@@ -218,11 +276,6 @@ public class Index5 {
             return "Not found";
         }
 
-
-        // if query not in the index return not found
-
-
-//        Posting posting = index.get(words[0].toLowerCase()).pList;
         Posting posting = null;
         int i = 0;
         while (i < len) {
@@ -232,8 +285,10 @@ public class Index5 {
                 continue;
             }
 
+            // if the posting is null that mean this is the first word from the phrase that appears in the index
             if(posting == null)
                 posting = index.get(words[i].toLowerCase()).pList;
+            // else get the intersection between them
             else
             {
                 posting = intersect(posting, index.get(words[i].toLowerCase()).pList);
@@ -242,6 +297,7 @@ public class Index5 {
             }
             i++;
         }
+        // if posting is not null print the posting list with doc id , title and the length of the document
         while (posting != null) {
             //System.out.println("\t" + sources.get(num));
             result += "\t" + posting.docId + " - " + sources.get(posting.docId).title + " - " + sources.get(posting.docId).length + "\n";
@@ -252,6 +308,12 @@ public class Index5 {
     
     
     //---------------------------------
+
+    /**
+     * function to sort list of words using bubble sort
+     * @param words
+     * @return the sorted list
+     */
     String[] sort(String[] words) {  //bubble sort
         boolean sorted = false;
         String sTmp;
@@ -273,6 +335,10 @@ public class Index5 {
 
      //---------------------------------
 
+    /**
+     * function to take the name of the index and create the file of the index from index hash map
+     * @param storageName the name of the index
+     */
     public void store(String storageName) {
         try {
             String pathToStorage = path+"rl\\"+storageName;
@@ -310,7 +376,13 @@ public class Index5 {
             e.printStackTrace();
         }
     }
-//=========================================    
+//=========================================
+
+    /**
+     * function to check if the storage name is exist or not
+     * @param storageName the name of the storage
+     * @return true if the storage name is exist or false otherwise
+     */
     public boolean storageFileExists(String storageName){
         java.io.File f = new java.io.File(path+"rl\\"+storageName);
         if (f.exists() && !f.isDirectory())
@@ -318,7 +390,12 @@ public class Index5 {
         return false;
             
     }
-//----------------------------------------------------    
+//----------------------------------------------------
+
+    /**
+     * function to create the file for the storage
+     * @param storageName the name of the storage
+     */
     public void createStore(String storageName) {
         try {
             String pathToStorage = path+storageName;
