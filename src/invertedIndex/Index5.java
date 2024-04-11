@@ -9,14 +9,12 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.Writer;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import static java.lang.Math.log10;
-import static java.lang.Math.sqrt;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.io.PrintWriter;
+
+
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 
 /**
  *
@@ -59,7 +57,7 @@ public class Index5 {
      * function to print posting list
      * @param p the haed of the posting list
      */
-    public void printPostingList(Posting p) {
+    public void printPostingList(Posting p , boolean isPositional) {
         // Iterator<Integer> it2 = hset.iterator();
         System.out.print("[");
         while (p != null) {
@@ -68,14 +66,22 @@ public class Index5 {
             // if the next element is not null
             // print the comma
             if(p.next != null){
-                System.out.print("" + p.docId + "," );
+                System.out.print("" + p.docId);
+                if(isPositional){
+                    printPositions(p);
+                }
+                System.out.print(",");
 
             }
             // if the next element is null
             // print the docId without the comma
             else{
                 System.out.print("" + p.docId );
+                if(isPositional){
+                    printPositions(p);
+                }
             }
+
             p = p.next;
         }
         System.out.println("]");
@@ -83,16 +89,25 @@ public class Index5 {
 
     //---------------------------------------------
 
+
+    /**
+     * Prints the positions of the posting list
+     * @param p the posting list
+     */
+    private void printPositions(Posting p){
+
+    }
     /**
      * function to print the index
+     * print positional index [3{ 488,1005,1067,1356 },4{ 217,381 },6{ 597,665 }]
      */
-    public void printDictionary() {
+    public void printDictionary(boolean isPositional) {
         Iterator it = index.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry) it.next();
             DictEntry dd = (DictEntry) pair.getValue(); // get the DictEntry from the index
             System.out.print("** [" + pair.getKey() + "," + dd.doc_freq + "]       =--> "); // print the string and the number of documents
-            printPostingList(dd.pList); // print posting list
+            printPostingList(dd.pList , isPositional); // print posting list
         }
         System.out.println("------------------------------------------------------");
         System.out.println("*** Number of terms = " + index.size()); // print the number of words in the index
@@ -101,9 +116,12 @@ public class Index5 {
     //-----------------------------------------------
 
     /**
+     * Inverted index
+     *
      * function to build the inverted index
      * @param files from the disk
      */
+
     public void buildIndex(String[] files) {  // from disk not from the internet
         int fid = 0; // Initialize document ID counter
         for (String fileName : files) { // Iterate through each file in the array of file names
@@ -130,8 +148,6 @@ public class Index5 {
         //   printDictionary(); // to print the dictionary after building the index
     }
 
-    //----------------------------------------------------------------------------
-
     /**
      * helper method to build the inverted index
      * @param ln line from the doc
@@ -142,7 +158,7 @@ public class Index5 {
         int flen = 0; // number of words in the line
 
         String[] words = ln.split("\\W+");
-      //   String[] words = ln.replaceAll("(?:[^a-zA-Z0-9 -]|(?<=\\w)-(?!\\S))", " ").toLowerCase().split("\\s+");
+        //   String[] words = ln.replaceAll("(?:[^a-zA-Z0-9 -]|(?<=\\w)-(?!\\S))", " ").toLowerCase().split("\\s+");
         flen += words.length;
         for (String word : words) {
             word = word.toLowerCase(); // convert the word to lowercase
@@ -158,7 +174,7 @@ public class Index5 {
             }
             // add document id to the posting list
             if (!index.get(word).postingListContains(fid)) {
-                index.get(word).doc_freq += 1; //set doc freq to the number of doc that contain the term 
+                index.get(word).doc_freq += 1; //set doc freq to the number of doc that contain the term
                 if (index.get(word).pList == null) {
                     index.get(word).pList = new Posting(fid);
                     index.get(word).last = index.get(word).pList;
@@ -179,6 +195,175 @@ public class Index5 {
         }
         return flen;
     }
+
+
+// =================================================================================================================================
+
+    /**
+     * build the bi word index
+     * @param files from the disk
+     */
+    public void buildBIIndex(String[] files) {  // from disk not from the internet
+        int fid = 0; // Initialize document ID counter
+        for (String fileName : files) { // Iterate through each file in the array of file names
+            try (BufferedReader file = new BufferedReader(new FileReader(fileName))) { // Open file for reading
+                if (!sources.containsKey(fileName)) { // Check if the file is not already in the sources map
+                    // If not, create a new SourceRecord and add it to the sources map
+                    sources.put(fid, new SourceRecord(fid, fileName, fileName, "notext"));
+                }
+                String ln; // Variable to store each line read from the file
+                int flen = 0; // Initialize the length of the file
+                // Read each line from the file until end of file is reached
+                while ((ln = file.readLine()) != null) {
+                    // Call indexOneLine method to process each line and update index
+                    // handle case of the last word in the previous line and the first word in the current line
+                    flen += indexBiOneLine(ln, fid);
+
+
+                }
+                // Update the length of the file in the corresponding SourceRecord
+                sources.get(fid).length = flen;
+
+            } catch (IOException e) { // Catch IOException if file not found or other I/O error occurs
+                System.out.println("File " + fileName + " not found. Skip it");
+            }
+            fid++; // Increment document ID counter for the next file
+        }
+        //   printDictionary(); // to print the dictionary after building the index
+    }
+
+    /**
+     * build the bi word index
+     * @param ln
+     * @param fid
+     * @return
+     */
+    public int indexBiOneLine(String ln, int fid) {
+        int flen = 0; // number of words in the line
+
+        String[] words = ln.split("\\W+");
+        //   String[] words = ln.replaceAll("(?:[^a-zA-Z0-9 -]|(?<=\\w)-(?!\\S))", " ").toLowerCase().split("\\s+");
+        flen += words.length;
+
+        for (int i=0; i<flen; i++) {
+            String word = words[i].toLowerCase(); // convert the word to lowercase
+
+            // check to see if the word is not in the dictionary
+            // if not add it
+            if (!index.containsKey(word)) {
+                index.put(word, new DictEntry());
+            }
+            // add document id to the posting list
+            if (!index.get(word).postingListContains(fid)) {
+                index.get(word).doc_freq += 1; //set doc freq to the number of doc that contain the term
+                if (index.get(word).pList == null) {
+                    index.get(word).pList = new Posting(fid);
+                    index.get(word).last = index.get(word).pList;
+                } else {
+                    index.get(word).last.next = new Posting(fid);
+                    index.get(word).last = index.get(word).last.next;
+                }
+            } else {
+                index.get(word).last.dtf += 1;
+            }
+            //set the term_freq in the collection
+            index.get(word).term_freq += 1;
+            if (word.equalsIgnoreCase("lattice")) {
+
+                System.out.println("  <<" + index.get(word).getPosting(1) + ">> " + ln);
+            }
+
+        }
+        return flen;
+    }
+
+// =============================================================================================================================
+
+    /**
+     * positional index
+     * @param files from the disk
+     */
+    public void buildPositionalIndex(String[] files) {  // from disk not from the internet
+        int fid = 0; // Initialize document ID counter
+        for (String fileName : files) { // Iterate through each file in the array of file names
+            try (BufferedReader file = new BufferedReader(new FileReader(fileName))) { // Open file for reading
+                if (!sources.containsKey(fileName)) { // Check if the file is not already in the sources map
+                    // If not, create a new SourceRecord and add it to the sources map
+                    sources.put(fid, new SourceRecord(fid, fileName, fileName, "notext"));
+                }
+                String ln; // Variable to store each line read from the file
+                int flen = 0; // Initialize the length of the file
+                // Read each line from the file until end of file is reached
+                while ((ln = file.readLine()) != null) {
+                    // Call indexOneLine method to process each line and update index
+                    flen += positionalIndexOneLine(ln, fid);
+                }
+                // Update the length of the file in the corresponding SourceRecord
+                sources.get(fid).length = flen;
+
+            } catch (IOException e) { // Catch IOException if file not found or other I/O error occurs
+                System.out.println("File " + fileName + " not found. Skip it");
+            }
+            fid++; // Increment document ID counter for the next file
+        }
+        //   printDictionary(); // to print the dictionary after building the index
+    }
+
+    /**
+     * build the positional index
+     *
+     * @param ln
+     * @param fid
+     * @return
+     */
+    public int positionalIndexOneLine(String ln, int fid) {
+        int flen = 0; // number of words in the line
+
+        String[] words = ln.split("\\W+");
+        //   String[] words = ln.replaceAll("(?:[^a-zA-Z0-9 -]|(?<=\\w)-(?!\\S))", " ").toLowerCase().split("\\s+");
+        flen += words.length;
+        for (String word : words) {
+            word = word.toLowerCase(); // convert the word to lowercase
+            // skip the words that constantly repeated
+//            if (stopWord(word)) {
+//                continue;
+//            }
+//            word = stemWord(word);
+            // check to see if the word is not in the dictionary
+            // if not add it
+            if (!index.containsKey(word)) {
+                index.put(word, new DictEntry());
+            }
+            // add document id to the posting list
+            if (!index.get(word).postingListContains(fid)) {
+                index.get(word).doc_freq += 1; //set doc freq to the number of doc that contain the term
+                if (index.get(word).pList == null) {
+                    index.get(word).pList = new Posting(fid);
+                    index.get(word).last = index.get(word).pList;
+                } else {
+                    index.get(word).last.next = new Posting(fid);
+                    index.get(word).last = index.get(word).last.next;
+                }
+
+            } else {
+                index.get(word).last.dtf += 1;
+            }
+            //set the term_freq in the collection
+            index.get(word).term_freq += 1;
+            if (word.equalsIgnoreCase("lattice")) {
+
+                System.out.println("  <<" + index.get(word).getPosting(1) + ">> " + ln);
+            }
+
+        }
+        return flen;
+    }
+
+
+
+    //----------------------------------------------------------------------------
+
+
 
 //----------------------------------------------------------------------------
 
@@ -253,14 +438,115 @@ public class Index5 {
     }
 
     /**
+     * intersect of the positional index
+     * @param pL1
+     * @param pL2
+     * @return
+     */
+    Posting PositionalIntersect(Posting pL1, Posting pL2) {
+///****  -1-   complete after each comment ****
+//   INTERSECT ( p1 , p2 )
+//          1  answer ←      {}
+        Posting answer = null;
+        Posting last = null;
+//      2 while p1  != NIL and p2  != NIL
+        while (pL1 != null && pL2 != null) {
+//          3 do if docID ( p 1 ) = docID ( p2 )
+            if (pL1.docId == pL2.docId) {
+//          4   then ADD ( answer, docID ( p1 ))
+                if (answer == null) {
+                    answer = new Posting(pL1.docId);
+                    last = answer;
+                } else {
+                    last.next = new Posting(pL1.docId);
+                    last = last.next;
+                }
+//          5       p1 ← next ( p1 )
+                pL1 = pL1.next;
+//          6       p2 ← next ( p2 )
+                pL2 = pL2.next;
+            } else if (pL1.docId < pL2.docId) {
+//          7   else if docID ( p1 ) < docID ( p2 )
+//          8        then p1 ← next ( p1 )
+                pL1 = pL1.next;
+            } else {
+//          9        else p2 ← next ( p2 )
+                pL2 = pL2.next;
+            }
+        }
+        return answer;
+    }
+
+
+// =================================================================================================================
+
+    /**
      * function that take the phrase and return the documents that contain the words in the phrase
      * @param phrase the phrase to search for documents
      * @return the documents that contain the words in the phrase or not found if all the words are not found in the index
      *         or not matching if there is no intersection between the words in the phrase
      *
      */
-    public String find_24_01(String phrase) { // any mumber of terms non-optimized search 
+    public String find_24_01(String phrase) { // any mumber of terms non-optimized search
         String result = "";
+
+
+        String[] words = phrase.split("\\W+");
+        int len = words.length;
+        boolean found = false;
+
+        //fix this if word is not in the hash table will crash...
+        for(String word: words){
+            if(index.containsKey(word.toLowerCase())){
+                found = true;
+            }
+        }
+        //check if the whole phrase is not in the index return not found
+        if(!found){
+            return "Not found";
+        }
+
+        Posting posting = null;
+        int i = 0;
+        while (i < len) {
+            //skip the word if it is not found
+            if (!index.containsKey(words[i].toLowerCase())) {
+                i++;
+                continue;
+            }
+
+            // if the posting is null that mean this is the first word from the phrase that appears in the index
+            if(posting == null)
+                posting = index.get(words[i].toLowerCase()).pList;
+                // else get the intersection between them
+            else
+            {
+                posting = intersect(posting, index.get(words[i].toLowerCase()).pList);
+                if(posting == null)
+                    return "No matching";
+            }
+            i++;
+        }
+        // if posting is not null print the posting list with doc id , title and the length of the document
+        while (posting != null) {
+            //System.out.println("\t" + sources.get(num));
+            result += "\t" + posting.docId + " - " + sources.get(posting.docId).title + " - " + sources.get(posting.docId).length + "\n";
+            posting = posting.next;
+        }
+        return result;
+    }
+
+
+    /**
+     * find for the bi word index
+     * @param phrase
+     * @return
+     */
+
+    public String find_24_01_BiWord(String phrase) { // any mumber of terms non-optimized search
+        String result = "";
+
+
         String[] words = phrase.split("\\W+");
         int len = words.length;
         boolean found = false;
@@ -292,6 +578,59 @@ public class Index5 {
             else
             {
                 posting = intersect(posting, index.get(words[i].toLowerCase()).pList);
+                if(posting == null)
+                    return "No matching";
+            }
+            i++;
+        }
+        // if posting is not null print the posting list with doc id , title and the length of the document
+        while (posting != null) {
+            //System.out.println("\t" + sources.get(num));
+            result += "\t" + posting.docId + " - " + sources.get(posting.docId).title + " - " + sources.get(posting.docId).length + "\n";
+            posting = posting.next;
+        }
+        return result;
+    }
+
+    /**
+     * find for the positional index
+     * @param phrase
+     * @return
+     */
+    public String find_24_01_positionalIndex(String phrase) { // any mumber of terms non-optimized search
+        String result = "";
+
+        String[] words = phrase.split("\\W+");
+        int len = words.length;
+        boolean found = false;
+
+        //fix this if word is not in the hash table will crash...
+        for(String word: words){
+            if(index.containsKey(word.toLowerCase())){
+                found = true;
+            }
+        }
+        //check if the whole phrase is not in the index return not found
+        if(!found){
+            return "Not found";
+        }
+
+        Posting posting = null;
+        int i = 0;
+        while (i < len) {
+            //skip the word if it is not found
+            if (!index.containsKey(words[i].toLowerCase())) {
+                i++;
+                continue;
+            }
+
+            // if the posting is null that mean this is the first word from the phrase that appears in the index
+            if(posting == null)
+                posting = index.get(words[i].toLowerCase()).pList;
+                // else get the intersection between them
+            else
+            {
+                posting = PositionalIntersect(posting, index.get(words[i].toLowerCase()).pList);
                 if(posting == null)
                     return "No matching";
             }
