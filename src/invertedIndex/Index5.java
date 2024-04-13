@@ -89,17 +89,20 @@ public class Index5 {
 
     //---------------------------------------------
 
-
-    /**
-     * Prints the positions of the posting list
-     * @param p the posting list
-     */
     private void printPositions(Posting p){
+        System.out.print("{ ");
+        for(int i = 0; i <p.positions.size(); i++){
+            if(i == p.positions.size()-1){
+                System.out.print(p.positions.get(i));
 
+            } else{
+                System.out.print(p.positions.get(i)+ ",");
+            }
+        }
+        System.out.print(" }");
     }
     /**
      * function to print the index
-     * print positional index [3{ 488,1005,1067,1356 },4{ 217,381 },6{ 597,665 }]
      */
     public void printDictionary(boolean isPositional) {
         Iterator it = index.entrySet().iterator();
@@ -112,7 +115,8 @@ public class Index5 {
         System.out.println("------------------------------------------------------");
         System.out.println("*** Number of terms = " + index.size()); // print the number of words in the index
     }
- 
+
+
     //-----------------------------------------------
 
     /**
@@ -281,10 +285,6 @@ public class Index5 {
 
 // =============================================================================================================================
 
-    /**
-     * positional index
-     * @param files from the disk
-     */
     public void buildPositionalIndex(String[] files) {  // from disk not from the internet
         int fid = 0; // Initialize document ID counter
         for (String fileName : files) { // Iterate through each file in the array of file names
@@ -298,7 +298,7 @@ public class Index5 {
                 // Read each line from the file until end of file is reached
                 while ((ln = file.readLine()) != null) {
                     // Call indexOneLine method to process each line and update index
-                    flen += positionalIndexOneLine(ln, fid);
+                    flen += positionalIndexOneLine(ln, fid, flen);
                 }
                 // Update the length of the file in the corresponding SourceRecord
                 sources.get(fid).length = flen;
@@ -311,14 +311,7 @@ public class Index5 {
         //   printDictionary(); // to print the dictionary after building the index
     }
 
-    /**
-     * build the positional index
-     *
-     * @param ln
-     * @param fid
-     * @return
-     */
-    public int positionalIndexOneLine(String ln, int fid) {
+    public int positionalIndexOneLine(String ln, int fid, int position) {
         int flen = 0; // number of words in the line
 
         String[] words = ln.split("\\W+");
@@ -346,9 +339,11 @@ public class Index5 {
                     index.get(word).last.next = new Posting(fid);
                     index.get(word).last = index.get(word).last.next;
                 }
+                index.get(word).last.positions.add(position);
 
             } else {
                 index.get(word).last.dtf += 1;
+                index.get(word).last.positions.add(position);
             }
             //set the term_freq in the collection
             index.get(word).term_freq += 1;
@@ -356,6 +351,8 @@ public class Index5 {
 
                 System.out.println("  <<" + index.get(word).getPosting(1) + ">> " + ln);
             }
+
+            position++;
 
         }
         return flen;
