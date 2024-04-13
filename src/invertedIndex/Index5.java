@@ -122,7 +122,7 @@ public class Index5 {
      * @param files from the disk
      */
 
-    public void buildIndex(String[] files) {  // from disk not from the internet
+    public void buildIndex(String[] files , boolean isBiWord) {  // from disk not from the internet
         int fid = 0; // Initialize document ID counter
         for (String fileName : files) { // Iterate through each file in the array of file names
             try (BufferedReader file = new BufferedReader(new FileReader(fileName))) { // Open file for reading
@@ -135,7 +135,7 @@ public class Index5 {
                 // Read each line from the file until end of file is reached
                 while ((ln = file.readLine()) != null) {
                     // Call indexOneLine method to process each line and update index
-                    flen += indexOneLine(ln, fid);
+                    flen += indexOneLine(ln, fid, isBiWord);
                 }
                 // Update the length of the file in the corresponding SourceRecord
                 sources.get(fid).length = flen;
@@ -154,7 +154,7 @@ public class Index5 {
      * @param fid doc id
      * @return the number of words in the line
      */
-    public int indexOneLine(String ln, int fid) {
+    public int indexOneLine(String ln, int fid, boolean isBiWord) {
         int flen = 0; // number of words in the line
 
         String[] words = ln.split("\\W+");
@@ -163,10 +163,12 @@ public class Index5 {
         for (String word : words) {
             word = word.toLowerCase(); // convert the word to lowercase
             // skip the words that constantly repeated
-            if (stopWord(word)) {
-                continue;
+            if(!isBiWord){
+                if (stopWord(word)) {
+                    continue;
+                }
+                word = stemWord(word);
             }
-            word = stemWord(word);
             // check to see if the word is not in the dictionary
             // if not add it
             if (!index.containsKey(word)) {
@@ -487,7 +489,7 @@ public class Index5 {
      *         or not matching if there is no intersection between the words in the phrase
      *
      */
-    public String find_24_01(String phrase) { // any mumber of terms non-optimized search
+    public String find_24_01(String phrase, boolean isPositional) { // any mumber of terms non-optimized search
         String result = "";
 
 
@@ -521,7 +523,11 @@ public class Index5 {
                 // else get the intersection between them
             else
             {
-                posting = intersect(posting, index.get(words[i].toLowerCase()).pList);
+                if(isPositional){
+                    posting = PositionalIntersect(posting, index.get(words[i].toLowerCase()).pList);
+                }else{
+                    posting = intersect(posting, index.get(words[i].toLowerCase()).pList);
+                }
                 if(posting == null)
                     return "No matching";
             }
@@ -592,58 +598,7 @@ public class Index5 {
         return result;
     }
 
-    /**
-     * find for the positional index
-     * @param phrase
-     * @return
-     */
-    public String find_24_01_positionalIndex(String phrase) { // any mumber of terms non-optimized search
-        String result = "";
 
-        String[] words = phrase.split("\\W+");
-        int len = words.length;
-        boolean found = false;
-
-        //fix this if word is not in the hash table will crash...
-        for(String word: words){
-            if(index.containsKey(word.toLowerCase())){
-                found = true;
-            }
-        }
-        //check if the whole phrase is not in the index return not found
-        if(!found){
-            return "Not found";
-        }
-
-        Posting posting = null;
-        int i = 0;
-        while (i < len) {
-            //skip the word if it is not found
-            if (!index.containsKey(words[i].toLowerCase())) {
-                i++;
-                continue;
-            }
-
-            // if the posting is null that mean this is the first word from the phrase that appears in the index
-            if(posting == null)
-                posting = index.get(words[i].toLowerCase()).pList;
-                // else get the intersection between them
-            else
-            {
-                posting = PositionalIntersect(posting, index.get(words[i].toLowerCase()).pList);
-                if(posting == null)
-                    return "No matching";
-            }
-            i++;
-        }
-        // if posting is not null print the posting list with doc id , title and the length of the document
-        while (posting != null) {
-            //System.out.println("\t" + sources.get(num));
-            result += "\t" + posting.docId + " - " + sources.get(posting.docId).title + " - " + sources.get(posting.docId).length + "\n";
-            posting = posting.next;
-        }
-        return result;
-    }
     
     
     //---------------------------------

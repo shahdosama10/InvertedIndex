@@ -48,9 +48,10 @@ public class Test {
         }
 
         if(type == 1){
-            index.buildIndex(fileList);
+            index.buildIndex(fileList , false);
             index.printDictionary(false);
         } else if(type == 2){
+            index.buildIndex(fileList , true);
             index.buildBIIndex(fileList);
             index.printDictionary(false);
         } else if(type == 3){
@@ -77,11 +78,11 @@ public class Test {
                 break;
             } else {
                 if(type == 1) {
-                    System.out.println("Boo0lean Model result = \n" + index.find_24_01(phrase));
+                    System.out.println("Boo0lean Model result = \n" + index.find_24_01(phrase, false));
                 } else if (type == 2) {
                     System.out.println("Boo0lean Model result = \n" + index.find_24_01_BiWord(phrase));
                 } else if (type == 3) {
-                    System.out.println("Boo0lean Model result = \n" + index.find_24_01_positionalIndex(phrase));
+                    System.out.println("Boo0lean Model result = \n" + index.find_24_01(phrase, true));
                 }
             }
 
