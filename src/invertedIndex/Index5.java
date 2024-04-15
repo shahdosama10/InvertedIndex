@@ -11,6 +11,7 @@ import java.io.Writer;
 import java.io.IOException;
 
 
+
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,6 +28,10 @@ public class Index5 {
     public Map<Integer, SourceRecord> sources;  // store the doc_id and the file name.
 
     public HashMap<String, DictEntry> index; // THe inverted index
+
+  //  public HashMap<Integer, String> last =new HashMap<Integer, String>(); // The last word in the previous line
+
+    public String lastWord = ""; // The last word in the previous line
 
     public String path = "tmp11\\"; // path of the documents
     //--------------------------------------------
@@ -214,14 +219,18 @@ public class Index5 {
                     sources.put(fid, new SourceRecord(fid, fileName, fileName, "notext"));
                 }
                 String ln; // Variable to store each line read from the file
+
                 int flen = 0; // Initialize the length of the file
+
+                int lineNum = 0; // Initialize the line number
+
                 // Read each line from the file until end of file is reached
                 while ((ln = file.readLine()) != null) {
                     // Call indexOneLine method to process each line and update index
                     // handle case of the last word in the previous line and the first word in the current line
-                    flen += indexBiOneLine(ln, fid);
 
-
+                    lineNum++;
+                    flen += indexBiOneLine(ln, fid, lineNum);
                 }
                 // Update the length of the file in the corresponding SourceRecord
                 sources.get(fid).length = flen;
@@ -240,43 +249,61 @@ public class Index5 {
      * @param fid
      * @return
      */
-    public int indexBiOneLine(String ln, int fid) {
+    public int indexBiOneLine(String ln ,int fid,int lineNum) {
         int flen = 0; // number of words in the line
-
         String[] words = ln.split("\\W+");
         //   String[] words = ln.replaceAll("(?:[^a-zA-Z0-9 -]|(?<=\\w)-(?!\\S))", " ").toLowerCase().split("\\s+");
+
+       // last.put(lineNum, words[words.length - 1]); // store the last word in the line
+
+        String BiWordLines = "";
         flen += words.length;
+
+        // if it is not the first line get BiWord from the last word in the previous line and the first word in the current line
+        if( lineNum !=1){
+           // BiWordLines = last.get(lineNum-1) + "_" + words[0];
+            BiWordLines= lastWord + "_" + words[0];
+        }
+        lastWord = words[words.length - 1]; // store the last word in the line
+
+        // store the BiWord in the index
+        if(!BiWordLines.isEmpty()){
+            checkAdd(BiWordLines, fid, ln);
+        }
 
         for (int i=0; i<flen; i++) {
             String word = words[i].toLowerCase(); // convert the word to lowercase
-
-            // check to see if the word is not in the dictionary
-            // if not add it
-            if (!index.containsKey(word)) {
-                index.put(word, new DictEntry());
-            }
-            // add document id to the posting list
-            if (!index.get(word).postingListContains(fid)) {
-                index.get(word).doc_freq += 1; //set doc freq to the number of doc that contain the term
-                if (index.get(word).pList == null) {
-                    index.get(word).pList = new Posting(fid);
-                    index.get(word).last = index.get(word).pList;
-                } else {
-                    index.get(word).last.next = new Posting(fid);
-                    index.get(word).last = index.get(word).last.next;
-                }
-            } else {
-                index.get(word).last.dtf += 1;
-            }
-            //set the term_freq in the collection
-            index.get(word).term_freq += 1;
-            if (word.equalsIgnoreCase("lattice")) {
-
-                System.out.println("  <<" + index.get(word).getPosting(1) + ">> " + ln);
-            }
-
+            checkAdd(word, fid, ln);
         }
         return flen;
+    }
+
+    // =============================================================================================================================
+
+    public void checkAdd(String word ,int fid , String ln){
+        if (!index.containsKey(word)) {
+            index.put(word, new DictEntry());
+        }
+        // add document id to the posting list
+        if (!index.get(word).postingListContains(fid)) {
+            index.get(word).doc_freq += 1; //set doc freq to the number of doc that contain the term
+            if (index.get(word).pList == null) {
+                index.get(word).pList = new Posting(fid);
+                index.get(word).last = index.get(word).pList;
+            } else {
+                index.get(word).last.next = new Posting(fid);
+                index.get(word).last = index.get(word).last.next;
+            }
+        } else {
+            index.get(word).last.dtf += 1;
+        }
+        //set the term_freq in the collection
+        index.get(word).term_freq += 1;
+        if (word.equalsIgnoreCase("lattice")) {
+
+            System.out.println("  <<" + index.get(word).getPosting(1) + ">> " + ln);
+        }
+
     }
 
 // =============================================================================================================================
