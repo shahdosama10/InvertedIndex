@@ -4,10 +4,13 @@
  */
 package invertedIndex;
 
+import static java.lang.Math.abs;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.Writer;
+import java.lang.reflect.Array;
 import java.io.IOException;
 
 
@@ -442,34 +445,43 @@ public class Index5 {
      * @param pL2
      * @return
      */
-    Posting PositionalIntersect(Posting pL1, Posting pL2) {
-///****  -1-   complete after each comment ****
-//   INTERSECT ( p1 , p2 )
-//          1  answer ←      {}
+    Posting PositionalIntersect(Posting pL1, Posting pL2, int k) {
         Posting answer = null;
         Posting last = null;
-//      2 while p1  != NIL and p2  != NIL
         while (pL1 != null && pL2 != null) {
-//          3 do if docID ( p 1 ) = docID ( p2 )
             if (pL1.docId == pL2.docId) {
-//          4   then ADD ( answer, docID ( p1 ))
-                if (answer == null) {
-                    answer = new Posting(pL1.docId);
-                    last = answer;
-                } else {
-                    last.next = new Posting(pL1.docId);
-                    last = last.next;
+                List<Integer> pp1 = pL1.positions;
+                List<Integer> pp2 = pL2.positions;
+                int i = 0;
+                int j = 0;
+                List<Integer> positions = new ArrayList<>();
+                while (i < pp1.size() && j < pp2.size()) {
+                    if (pp1.get(i) + k == pp2.get(j)) {
+                        System.out.println("Term 1 positions: " + pp1.get(i) + " Term 2 positions: " + pp2.get(j));
+                        positions.add(pp2.get(j));
+                        i++;
+                        j++;
+                    } else if (pp1.get(i) < pp2.get(j)) {
+                        i++;
+                    } else {
+                        j++;
+                    }
                 }
-//          5       p1 ← next ( p1 )
+                if(!positions.isEmpty()) {
+                    if (answer == null) {
+                        answer = new Posting(pL1.docId);
+                        last = answer;
+                    } else {
+                        last.next = new Posting(pL1.docId);
+                        last = last.next;
+                    }
+                    last.positions = positions;
+                } 
                 pL1 = pL1.next;
-//          6       p2 ← next ( p2 )
                 pL2 = pL2.next;
             } else if (pL1.docId < pL2.docId) {
-//          7   else if docID ( p1 ) < docID ( p2 )
-//          8        then p1 ← next ( p1 )
                 pL1 = pL1.next;
             } else {
-//          9        else p2 ← next ( p2 )
                 pL2 = pL2.next;
             }
         }
@@ -521,7 +533,7 @@ public class Index5 {
             else
             {
                 if(isPositional){
-                    posting = PositionalIntersect(posting, index.get(words[i].toLowerCase()).pList);
+                    posting = PositionalIntersect(posting, index.get(words[i].toLowerCase()).pList, 1);
                 }else{
                     posting = intersect(posting, index.get(words[i].toLowerCase()).pList);
                 }
