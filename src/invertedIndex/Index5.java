@@ -4,10 +4,13 @@
  */
 package invertedIndex;
 
+import static java.lang.Math.abs;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.Writer;
+import java.lang.reflect.Array;
 import java.io.IOException;
 
 
@@ -54,8 +57,10 @@ public class Index5 {
     //---------------------------------------------
 
     /**
+     *
      * function to print posting list
      * @param p the haed of the posting list
+     * @param isPositional boolean indicating whether posting list is positional or not
      */
     public void printPostingList(Posting p , boolean isPositional) {
         // Iterator<Integer> it2 = hset.iterator();
@@ -67,6 +72,7 @@ public class Index5 {
             // print the comma
             if(p.next != null){
                 System.out.print("" + p.docId);
+                // if positional index print the positions of the words
                 if(isPositional){
                     printPositions(p);
                 }
@@ -89,17 +95,26 @@ public class Index5 {
 
     //---------------------------------------------
 
-
     /**
-     * Prints the positions of the posting list
-     * @param p the posting list
+     * Prints the positions of the word
+     * @param p posting of the word
      */
     private void printPositions(Posting p){
+        System.out.print("{ ");
+        for(int i = 0; i <p.positions.size(); i++){
+            if(i == p.positions.size()-1){
+                System.out.print(p.positions.get(i));
 
+            } else{
+                System.out.print(p.positions.get(i)+ ",");
+            }
+        }
+        System.out.print(" }");
     }
+
     /**
-     * function to print the index
-     * print positional index [3{ 488,1005,1067,1356 },4{ 217,381 },6{ 597,665 }]
+     * print the dictionary of the index
+     * @param isPositional boolean indicating whether the index is positional or not
      */
     public void printDictionary(boolean isPositional) {
         Iterator it = index.entrySet().iterator();
@@ -112,7 +127,8 @@ public class Index5 {
         System.out.println("------------------------------------------------------");
         System.out.println("*** Number of terms = " + index.size()); // print the number of words in the index
     }
- 
+
+
     //-----------------------------------------------
 
     /**
@@ -281,10 +297,6 @@ public class Index5 {
 
 // =============================================================================================================================
 
-    /**
-     * positional index
-     * @param files from the disk
-     */
     public void buildPositionalIndex(String[] files) {  // from disk not from the internet
         int fid = 0; // Initialize document ID counter
         for (String fileName : files) { // Iterate through each file in the array of file names
@@ -298,7 +310,8 @@ public class Index5 {
                 // Read each line from the file until end of file is reached
                 while ((ln = file.readLine()) != null) {
                     // Call indexOneLine method to process each line and update index
-                    flen += positionalIndexOneLine(ln, fid);
+                    // pass the flen to positionalIndexOneLine to set the positions of the words
+                    flen += positionalIndexOneLine(ln, fid, flen);
                 }
                 // Update the length of the file in the corresponding SourceRecord
                 sources.get(fid).length = flen;
@@ -311,26 +324,14 @@ public class Index5 {
         //   printDictionary(); // to print the dictionary after building the index
     }
 
-    /**
-     * build the positional index
-     *
-     * @param ln
-     * @param fid
-     * @return
-     */
-    public int positionalIndexOneLine(String ln, int fid) {
+    public int positionalIndexOneLine(String ln, int fid, int position) {
         int flen = 0; // number of words in the line
 
         String[] words = ln.split("\\W+");
-        //   String[] words = ln.replaceAll("(?:[^a-zA-Z0-9 -]|(?<=\\w)-(?!\\S))", " ").toLowerCase().split("\\s+");
         flen += words.length;
         for (String word : words) {
             word = word.toLowerCase(); // convert the word to lowercase
-            // skip the words that constantly repeated
-//            if (stopWord(word)) {
-//                continue;
-//            }
-//            word = stemWord(word);
+
             // check to see if the word is not in the dictionary
             // if not add it
             if (!index.containsKey(word)) {
@@ -346,9 +347,11 @@ public class Index5 {
                     index.get(word).last.next = new Posting(fid);
                     index.get(word).last = index.get(word).last.next;
                 }
+                index.get(word).last.positions.add(position); // add the position to the list of positions of the word
 
             } else {
                 index.get(word).last.dtf += 1;
+                index.get(word).last.positions.add(position);
             }
             //set the term_freq in the collection
             index.get(word).term_freq += 1;
@@ -356,6 +359,8 @@ public class Index5 {
 
                 System.out.println("  <<" + index.get(word).getPosting(1) + ">> " + ln);
             }
+
+            position++;
 
         }
         return flen;
@@ -440,39 +445,55 @@ public class Index5 {
     }
 
     /**
-     * intersect of the positional index
-     * @param pL1
-     * @param pL2
-     * @return
+     *
+     *  function to get the intersection of two posting
+     * @param pL1 the first posting
+     * @param pL2 the second posting
+     * @param k the space between the words (in our case it always 1 because we need to get the query exactly in the docs )
+     *
+     * @return posting of the intersection between the two posting
      */
-    Posting PositionalIntersect(Posting pL1, Posting pL2) {
-///****  -1-   complete after each comment ****
-//   INTERSECT ( p1 , p2 )
-//          1  answer ←      {}
+    Posting PositionalIntersect(Posting pL1, Posting pL2, int k) {
         Posting answer = null;
         Posting last = null;
-//      2 while p1  != NIL and p2  != NIL
         while (pL1 != null && pL2 != null) {
-//          3 do if docID ( p 1 ) = docID ( p2 )
+            // if the two postings appear in the same doc
             if (pL1.docId == pL2.docId) {
-//          4   then ADD ( answer, docID ( p1 ))
-                if (answer == null) {
-                    answer = new Posting(pL1.docId);
-                    last = answer;
-                } else {
-                    last.next = new Posting(pL1.docId);
-                    last = last.next;
+                List<Integer> pp1 = pL1.positions;  // get the positions of the first word
+                List<Integer> pp2 = pL2.positions;  // get the positions of the second word
+                int i = 0;
+                int j = 0;
+                List<Integer> positions = new ArrayList<>(); // positions of the intersection
+
+                while (i < pp1.size() && j < pp2.size()) {
+                    // if the second word appears after the first word exactly
+                    if (pp1.get(i) + k == pp2.get(j)) {
+                        positions.add(pp2.get(j)); // add it to the positions
+                        i++;
+                        j++;
+                    } else if (pp1.get(i) < pp2.get(j)) {
+                        i++;
+                    } else {
+                        j++;
+                    }
                 }
-//          5       p1 ← next ( p1 )
+
+                // if appear in the same doc but without any positions intersect
+                if(!positions.isEmpty()) {
+                    if (answer == null) {
+                        answer = new Posting(pL1.docId);
+                        last = answer;
+                    } else {
+                        last.next = new Posting(pL1.docId);
+                        last = last.next;
+                    }
+                    last.positions = positions;
+                } 
                 pL1 = pL1.next;
-//          6       p2 ← next ( p2 )
                 pL2 = pL2.next;
             } else if (pL1.docId < pL2.docId) {
-//          7   else if docID ( p1 ) < docID ( p2 )
-//          8        then p1 ← next ( p1 )
                 pL1 = pL1.next;
             } else {
-//          9        else p2 ← next ( p2 )
                 pL2 = pL2.next;
             }
         }
@@ -485,6 +506,7 @@ public class Index5 {
     /**
      * function that take the phrase and return the documents that contain the words in the phrase
      * @param phrase the phrase to search for documents
+     * @param isPositional whether the search should be positional or not
      * @return the documents that contain the words in the phrase or not found if all the words are not found in the index
      *         or not matching if there is no intersection between the words in the phrase
      *
@@ -523,9 +545,12 @@ public class Index5 {
                 // else get the intersection between them
             else
             {
+                // if positional call the positional intersect
                 if(isPositional){
-                    posting = PositionalIntersect(posting, index.get(words[i].toLowerCase()).pList);
-                }else{
+                    posting = PositionalIntersect(posting, index.get(words[i].toLowerCase()).pList, 1);
+                }
+                // else call the normal intersect
+                else{
                     posting = intersect(posting, index.get(words[i].toLowerCase()).pList);
                 }
                 if(posting == null)
