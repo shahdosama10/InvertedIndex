@@ -252,6 +252,10 @@ public class Index5 {
     public int indexBiOneLine(String ln ,int fid,int lineNum) {
         int flen = 0; // number of words in the line
         String[] words = ln.split("\\W+");
+        if(words.length == 0)
+        {
+            return flen;
+        }
         //   String[] words = ln.replaceAll("(?:[^a-zA-Z0-9 -]|(?<=\\w)-(?!\\S))", " ").toLowerCase().split("\\s+");
 
        // last.put(lineNum, words[words.length - 1]); // store the last word in the line
@@ -273,7 +277,15 @@ public class Index5 {
 
         for (int i=0; i<flen; i++) {
             String word = words[i].toLowerCase(); // convert the word to lowercase
-            checkAdd(word, fid, ln);
+//            checkAdd(word, fid, ln);
+            // combine each word with the next word to get the BiWord with underscore between them
+            if(i+1 < flen){
+                checkAdd(word, fid, ln); //to check the single word
+                System.out.println("word = " + word);
+                String BiWord = word + "_" + words[i+1].toLowerCase();
+                System.out.println("BiWord = " + BiWord);
+                checkAdd(BiWord, fid, ln); // to check the BiWord
+            }
         }
         return flen;
     }
