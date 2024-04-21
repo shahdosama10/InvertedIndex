@@ -581,65 +581,44 @@ public class Index5 {
         return result;
     }
 
-
     /**
      * find for the bi word index
-     * @param phrase
-     * @return
+     * @param phrase the phrase to search for documents
+     * @return the documents that contain the bi words in the phrase
      */
-
-    public String find_24_01_BiWord(String phrase) { // any mumber of terms non-optimized search
+    public String find_24_01_BiWord(String phrase) {
         String result = "";
 
+        // Remove double quotes
+        phrase = phrase.replaceAll("\"", "");
 
-        String[] words = phrase.split("\\W+");
-        int len = words.length;
-        boolean found = false;
-        
-        //fix this if word is not in the hash table will crash...
-        for(String word: words){
-            if(index.containsKey(word.toLowerCase())){
-                found = true;
+        // Split the phrase into individual words
+        String[] words = phrase.split("\\s+");
+
+
+        for (int i = 0; i < words.length - 1; i++) {
+            // Combine each word with the next word with an underscore between them
+            String biWord = words[i] + "_" + words[i + 1];
+
+            // Check if the bi-word exists in the index
+            if (index.containsKey(biWord.toLowerCase())) {
+                // If the bi-word exists, get its posting list
+                Posting posting = index.get(biWord.toLowerCase()).pList;
+
+                // Add document information to the result string
+                while (posting != null) {
+                    result += "\t" + posting.docId + " - " + sources.get(posting.docId).title + " - " + sources.get(posting.docId).length + "\n";
+                    posting = posting.next;
+                }
             }
         }
-        //check if the whole phrase is not in the index return not found
-        if(!found){
+
+        if (result.isEmpty()) {
             return "Not found";
+        } else {
+            return result;
         }
-
-        Posting posting = null;
-        int i = 0;
-        while (i < len) {
-            //skip the word if it is not found
-            if (!index.containsKey(words[i].toLowerCase())) {
-                i++;
-                continue;
-            }
-
-            // if the posting is null that mean this is the first word from the phrase that appears in the index
-            if(posting == null)
-                posting = index.get(words[i].toLowerCase()).pList;
-            // else get the intersection between them
-            else
-            {
-                posting = intersect(posting, index.get(words[i].toLowerCase()).pList);
-                if(posting == null)
-                    return "No matching";
-            }
-            i++;
-        }
-        // if posting is not null print the posting list with doc id , title and the length of the document
-        while (posting != null) {
-            //System.out.println("\t" + sources.get(num));
-            result += "\t" + posting.docId + " - " + sources.get(posting.docId).title + " - " + sources.get(posting.docId).length + "\n";
-            posting = posting.next;
-        }
-        return result;
     }
-
-
-    
-    
     //---------------------------------
 
     /**
