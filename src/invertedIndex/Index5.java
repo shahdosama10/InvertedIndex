@@ -589,36 +589,48 @@ public class Index5 {
     public String find_24_01_BiWord(String phrase) {
         String result = "";
 
-        // Remove double quotes
-        phrase = phrase.replaceAll("\"", "");
-
-        // Split the phrase into individual words
-        String[] words = phrase.split("\\s+");
-
-
-        for (int i = 0; i < words.length - 1; i++) {
-            // Combine each word with the next word with an underscore between them
-            String biWord = words[i] + "_" + words[i + 1];
-
-            // Check if the bi-word exists in the index
-            if (index.containsKey(biWord.toLowerCase())) {
-                // If the bi-word exists, get its posting list
-                Posting posting = index.get(biWord.toLowerCase()).pList;
-
-                // Add document information to the result string
-                while (posting != null) {
-                    result += "\t" + posting.docId + " - " + sources.get(posting.docId).title + " - " + sources.get(posting.docId).length + "\n";
-                    posting = posting.next;
-                }
+        // Split the phrase into words and bi-words
+        String[] terms = phrase.split("\\W+");
+        List<String> wordsAndBiWords = new ArrayList<>();
+        for (int i = 0; i < terms.length; i++) {
+            wordsAndBiWords.add(terms[i].toLowerCase());
+            if (i < terms.length - 1) {
+                wordsAndBiWords.add(terms[i] + "_" + terms[i + 1]);
             }
         }
 
-        if (result.isEmpty()) {
-            return "Not found";
-        } else {
-            return result;
+        Posting posting = null;
+        boolean first = true;
+
+        // Iterate over each word or bi-word in the phrase
+        for (String term : wordsAndBiWords) {
+            // Check if the term is in the index
+            if (index.containsKey(term)) {
+                if (first) {
+                    posting = index.get(term).pList;
+                    first = false;
+                } else {
+                    // Get the intersection of posting lists
+                    posting = intersect(posting, index.get(term).pList);
+                    if (posting == null) {
+                        return "No matching";
+                    }
+                }
+            } else {
+                // If the term is not in the index, return "Not found"
+                return "Not found";
+            }
         }
+
+        // Generate the result
+        while (posting != null) {
+            result += "\t" + posting.docId + " - " + sources.get(posting.docId).title + " - " + sources.get(posting.docId).length + "\n";
+            posting = posting.next;
+        }
+        return result;
     }
+
+
     //---------------------------------
 
     /**
