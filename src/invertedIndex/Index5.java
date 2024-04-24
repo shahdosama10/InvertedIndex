@@ -587,49 +587,77 @@ public class Index5 {
      * @return the documents that contain the bi words in the phrase
      */
     public String find_24_01_BiWord(String phrase) {
+
         String result = "";
 
-        // Split the phrase into words and bi-words
-        String[] terms = phrase.split("\\W+");
-        List<String> wordsAndBiWords = new ArrayList<>();
-        for (int i = 0; i < terms.length; i++) {
-            wordsAndBiWords.add(terms[i].toLowerCase());
-            if (i < terms.length - 1) {
-                wordsAndBiWords.add(terms[i] + "_" + terms[i + 1]);
-            }
-        }
-
+        // Split the phrase into words
+        String[] words = phrase.split(" ");
+        int len = words.length;
+        int i = 0;
         Posting posting = null;
-        boolean first = true;
 
-        // Iterate over each word or bi-word in the phrase
-        for (String term : wordsAndBiWords) {
-            // Check if the term is in the index
-            if (index.containsKey(term)) {
-                if (first) {
-                    posting = index.get(term).pList;
-                    first = false;
-                } else {
-                    // Get the intersection of posting lists
-                    posting = intersect(posting, index.get(term).pList);
-                    if (posting == null) {
-                        return "No matching";
-                    }
+        // Combine words that are between double quotes
+        while (i < len) {
+            if(words[i].startsWith("\"")){
+
+                words[i] = words[i].substring(1);
+                i++;
+                while(i < len && !words[i].endsWith("\"")){
+
+                    words[i-1] = words[i-1] + "_" + words[i];
+                    i++;
                 }
-            } else {
-                // If the term is not in the index, return "Not found"
-                return "Not found";
+
+                words[i-1] = words[i-1] + "_" + words[i].substring(0, words[i].length()-1);
             }
+            i++;
         }
 
-        // Generate the result
+        // Remove the elements that end with a double quote
+        List<String> wordsList = new ArrayList<String>();
+        for(String word: words){
+            if(!word.endsWith("\"")){
+                wordsList.add(word);
+            }
+        }
+        words = wordsList.toArray(new String[wordsList.size()]);
+        len = words.length;
+
+        // Check if the whole phrase is not in the index return not found
+        boolean found = false;
+        for(String word: words){
+            System.out.println(word);
+            if(index.containsKey(word.toLowerCase())){
+                found = true;
+            }
+        }
+        if(!found){
+            return "Not found";
+        }
+
+        // Intersect postings for each word in the phrase
+        i = 0;
+        while (i < len) {
+            if (!index.containsKey(words[i].toLowerCase())) {
+                i++;
+                continue;
+            }
+            if(posting == null)
+                posting = index.get(words[i].toLowerCase()).pList;
+            else
+                posting = intersect(posting, index.get(words[i].toLowerCase()).pList);
+            if(posting == null)
+                return "No matching";
+            i++;
+        }
+
+        // if posting is not null print the posting list with doc id , title and the length of the document
         while (posting != null) {
             result += "\t" + posting.docId + " - " + sources.get(posting.docId).title + " - " + sources.get(posting.docId).length + "\n";
             posting = posting.next;
         }
         return result;
     }
-
 
     //---------------------------------
 
