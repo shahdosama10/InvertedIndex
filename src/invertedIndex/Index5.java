@@ -626,7 +626,7 @@ public class Index5 {
         // Check if the whole phrase is not in the index return not found
         boolean found = false;
         for(String word: words){
-            System.out.println(word);
+            //System.out.println(word);
             if(index.containsKey(word.toLowerCase())){
                 found = true;
             }
