@@ -297,9 +297,9 @@ public class Index5 {
             // combine each word with the next word to get the BiWord with underscore between them
             if(i+1 < flen){
                 checkAdd(word, fid, ln); //to check the single word
-                System.out.println("word = " + word);
+//                System.out.println("word = " + word);
                 String BiWord = word + "_" + words[i+1].toLowerCase();
-                System.out.println("BiWord = " + BiWord);
+//                System.out.println("BiWord = " + BiWord);
                 checkAdd(BiWord, fid, ln); // to check the BiWord
             }
         }
