@@ -14,6 +14,7 @@ import java.lang.reflect.Array;
 import java.io.IOException;
 
 
+
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,6 +31,10 @@ public class Index5 {
     public Map<Integer, SourceRecord> sources;  // store the doc_id and the file name.
 
     public HashMap<String, DictEntry> index; // THe inverted index
+
+  //  public HashMap<Integer, String> last =new HashMap<Integer, String>(); // The last word in the previous line
+
+    public String lastWord = ""; // The last word in the previous line
 
     public String path = "tmp11\\"; // path of the documents
     //--------------------------------------------
@@ -230,14 +235,18 @@ public class Index5 {
                     sources.put(fid, new SourceRecord(fid, fileName, fileName, "notext"));
                 }
                 String ln; // Variable to store each line read from the file
+
                 int flen = 0; // Initialize the length of the file
+
+                int lineNum = 0; // Initialize the line number
+
                 // Read each line from the file until end of file is reached
                 while ((ln = file.readLine()) != null) {
                     // Call indexOneLine method to process each line and update index
                     // handle case of the last word in the previous line and the first word in the current line
-                    flen += indexBiOneLine(ln, fid);
 
-
+                    lineNum++;
+                    flen += indexBiOneLine(ln, fid, lineNum);
                 }
                 // Update the length of the file in the corresponding SourceRecord
                 sources.get(fid).length = flen;
@@ -256,43 +265,73 @@ public class Index5 {
      * @param fid
      * @return
      */
-    public int indexBiOneLine(String ln, int fid) {
+    public int indexBiOneLine(String ln ,int fid,int lineNum) {
         int flen = 0; // number of words in the line
-
         String[] words = ln.split("\\W+");
+        if(words.length == 0)
+        {
+            return flen;
+        }
         //   String[] words = ln.replaceAll("(?:[^a-zA-Z0-9 -]|(?<=\\w)-(?!\\S))", " ").toLowerCase().split("\\s+");
+
+       // last.put(lineNum, words[words.length - 1]); // store the last word in the line
+
+        String BiWordLines = "";
         flen += words.length;
+
+        // if it is not the first line get BiWord from the last word in the previous line and the first word in the current line
+        if( lineNum !=1){
+           // BiWordLines = last.get(lineNum-1) + "_" + words[0];
+            BiWordLines= lastWord + "_" + words[0];
+        }
+        lastWord = words[words.length - 1]; // store the last word in the line
+
+        // store the BiWord in the index
+        if(!BiWordLines.isEmpty()){
+            checkAdd(BiWordLines, fid, ln);
+        }
 
         for (int i=0; i<flen; i++) {
             String word = words[i].toLowerCase(); // convert the word to lowercase
-
-            // check to see if the word is not in the dictionary
-            // if not add it
-            if (!index.containsKey(word)) {
-                index.put(word, new DictEntry());
+//            checkAdd(word, fid, ln);
+            // combine each word with the next word to get the BiWord with underscore between them
+            if(i+1 < flen){
+                checkAdd(word, fid, ln); //to check the single word
+                System.out.println("word = " + word);
+                String BiWord = word + "_" + words[i+1].toLowerCase();
+                System.out.println("BiWord = " + BiWord);
+                checkAdd(BiWord, fid, ln); // to check the BiWord
             }
-            // add document id to the posting list
-            if (!index.get(word).postingListContains(fid)) {
-                index.get(word).doc_freq += 1; //set doc freq to the number of doc that contain the term
-                if (index.get(word).pList == null) {
-                    index.get(word).pList = new Posting(fid);
-                    index.get(word).last = index.get(word).pList;
-                } else {
-                    index.get(word).last.next = new Posting(fid);
-                    index.get(word).last = index.get(word).last.next;
-                }
-            } else {
-                index.get(word).last.dtf += 1;
-            }
-            //set the term_freq in the collection
-            index.get(word).term_freq += 1;
-            if (word.equalsIgnoreCase("lattice")) {
-
-                System.out.println("  <<" + index.get(word).getPosting(1) + ">> " + ln);
-            }
-
         }
         return flen;
+    }
+
+    // =============================================================================================================================
+
+    public void checkAdd(String word ,int fid , String ln){
+        if (!index.containsKey(word)) {
+            index.put(word, new DictEntry());
+        }
+        // add document id to the posting list
+        if (!index.get(word).postingListContains(fid)) {
+            index.get(word).doc_freq += 1; //set doc freq to the number of doc that contain the term
+            if (index.get(word).pList == null) {
+                index.get(word).pList = new Posting(fid);
+                index.get(word).last = index.get(word).pList;
+            } else {
+                index.get(word).last.next = new Posting(fid);
+                index.get(word).last = index.get(word).last.next;
+            }
+        } else {
+            index.get(word).last.dtf += 1;
+        }
+        //set the term_freq in the collection
+        index.get(word).term_freq += 1;
+        if (word.equalsIgnoreCase("lattice")) {
+
+            System.out.println("  <<" + index.get(word).getPosting(1) + ">> " + ln);
+        }
+
     }
 
 // =============================================================================================================================
@@ -567,65 +606,84 @@ public class Index5 {
         return result;
     }
 
-
     /**
      * find for the bi word index
-     * @param phrase
-     * @return
+     * @param phrase the phrase to search for documents
+     * @return the documents that contain the bi words in the phrase
      */
+    public String find_24_01_BiWord(String phrase) {
 
-    public String find_24_01_BiWord(String phrase) { // any mumber of terms non-optimized search
         String result = "";
 
-
-        String[] words = phrase.split("\\W+");
+        // Split the phrase into words
+        String[] words = phrase.split(" ");
         int len = words.length;
-        boolean found = false;
-        
-        //fix this if word is not in the hash table will crash...
+        int i = 0;
+        Posting posting = null;
+
+        // Combine words that are between double quotes
+        while (i < len) {
+            if(words[i].startsWith("\"")){
+
+                words[i] = words[i].substring(1);
+                i++;
+                while(i < len && !words[i].endsWith("\"")){
+
+                    words[i-1] = words[i-1] + "_" + words[i];
+                    i++;
+                }
+
+                words[i-1] = words[i-1] + "_" + words[i].substring(0, words[i].length()-1);
+            }
+            i++;
+        }
+
+        // Remove the elements that end with a double quote
+        List<String> wordsList = new ArrayList<String>();
         for(String word: words){
+            if(!word.endsWith("\"")){
+                wordsList.add(word);
+            }
+        }
+        words = wordsList.toArray(new String[wordsList.size()]);
+        len = words.length;
+
+        // Check if the whole phrase is not in the index return not found
+        boolean found = false;
+        for(String word: words){
+            //System.out.println(word);
             if(index.containsKey(word.toLowerCase())){
                 found = true;
             }
         }
-        //check if the whole phrase is not in the index return not found
         if(!found){
             return "Not found";
         }
 
-        Posting posting = null;
-        int i = 0;
+        // Intersect postings for each word in the phrase
+        i = 0;
         while (i < len) {
-            //skip the word if it is not found
             if (!index.containsKey(words[i].toLowerCase())) {
                 i++;
                 continue;
             }
-
-            // if the posting is null that mean this is the first word from the phrase that appears in the index
             if(posting == null)
                 posting = index.get(words[i].toLowerCase()).pList;
-            // else get the intersection between them
             else
-            {
                 posting = intersect(posting, index.get(words[i].toLowerCase()).pList);
-                if(posting == null)
-                    return "No matching";
-            }
+            if(posting == null)
+                return "No matching";
             i++;
         }
+
         // if posting is not null print the posting list with doc id , title and the length of the document
         while (posting != null) {
-            //System.out.println("\t" + sources.get(num));
             result += "\t" + posting.docId + " - " + sources.get(posting.docId).title + " - " + sources.get(posting.docId).length + "\n";
             posting = posting.next;
         }
         return result;
     }
 
-
-    
-    
     //---------------------------------
 
     /**
