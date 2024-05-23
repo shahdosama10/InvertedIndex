@@ -18,8 +18,8 @@ public class Test {
 
     public static void main(String args[]) throws IOException {
         Index5 index = new Index5();
-        //|**  change it to your collection directory 
-        //|**  in windows "C:\\tmp11\\rl\\collection\\"       
+        //|**  change it to your collection directory
+        //|**  in windows "C:\\tmp11\\rl\\collection\\"
         String files = "tmp11\\rl\\collection\\";
 
         File file = new File(files);

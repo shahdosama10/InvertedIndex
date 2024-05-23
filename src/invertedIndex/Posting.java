@@ -11,7 +11,7 @@ import java.util.List;
  *
  * @author ehab
  */
- 
+
 public class Posting {
 
     public Posting next = null;
@@ -25,7 +25,7 @@ public class Posting {
         dtf=t;
         positions = new ArrayList<Integer>();
     }
-    
+
     Posting(int id) {
         docId = id;
         positions = new ArrayList<Integer>();
